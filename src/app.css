@@ -43,6 +43,8 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 16px 16px 8px;
+  /* Keep content clear of the notch / Dynamic Island on iPhones. */
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
 }
 
 /* ---------- shared ---------- */
