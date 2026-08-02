@@ -15,6 +15,7 @@ export type Settings = {
   travelMode: { active: boolean; from?: string; to?: string };
   /** Pinned slot times when the daily allowance is 1 or 2. */
   anchors: { one: string[]; two: string[] };
+  water: { bottleOz: number; goalLitres: number };
 };
 
 export type PlanDay = {
@@ -38,6 +39,12 @@ export type DelayEvent = {
   id: string;
   timestamp: string;
   outcome: "resisted" | "used";
+};
+
+export type WaterLog = {
+  id: string;
+  timestamp: string; // ISO datetime
+  dateKey: string; // resolved with rollover hour
 };
 
 /** Pouches actually used per dateKey. Days with no entry are "unknown", not zero. */

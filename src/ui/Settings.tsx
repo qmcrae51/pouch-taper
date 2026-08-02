@@ -32,6 +32,7 @@ export default function Settings({ state, setState, todayKey }: Props) {
     ...s,
     travelMode: { ...s.travelMode },
     anchors: { one: [...s.anchors.one], two: [...s.anchors.two] },
+    water: { ...s.water },
   }));
   const [msg, setMsg] = useState<string | null>(null);
   const [preview, setPreview] = useState<RecomputePreview | null>(null);
@@ -103,6 +104,7 @@ export default function Settings({ state, setState, todayKey }: Props) {
             one: [...imported.settings.anchors.one],
             two: [...imported.settings.anchors.two],
           },
+          water: { ...imported.settings.water },
         });
         setMsg("Backup restored.");
       })
@@ -120,6 +122,7 @@ export default function Settings({ state, setState, todayKey }: Props) {
         one: [...fresh.settings.anchors.one],
         two: [...fresh.settings.anchors.two],
       },
+      water: { ...fresh.settings.water },
     });
     setConfirmReset(false);
     setMsg("All data erased.");
@@ -303,6 +306,48 @@ export default function Settings({ state, setState, todayKey }: Props) {
         </label>
         <p className="muted small">
           Times follow your device clock wherever you are.
+        </p>
+      </div>
+
+      <div className="card">
+        <h3>Water</h3>
+        <label>
+          Bottle size (oz)
+          <input
+            type="number"
+            inputMode="decimal"
+            value={draft.water.bottleOz}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                water: {
+                  ...d.water,
+                  bottleOz: num(e.target.value, d.water.bottleOz),
+                },
+              }))
+            }
+          />
+        </label>
+        <label>
+          Daily goal (litres)
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.5"
+            value={draft.water.goalLitres}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                water: {
+                  ...d.water,
+                  goalLitres: num(e.target.value, d.water.goalLitres),
+                },
+              }))
+            }
+          />
+        </label>
+        <p className="muted small">
+          Same goal every day — no end date, no taper.
         </p>
       </div>
 

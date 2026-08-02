@@ -16,4 +16,5 @@ export const DEFAULT_SETTINGS: Settings = {
   timezone: "America/Toronto",
   travelMode: { active: false, from: "2026-08-26", to: "2026-09-06" },
   anchors: { one: ["09:00"], two: ["09:00", "17:00"] },
+  water: { bottleOz: 24, goalLitres: 4 },
 };

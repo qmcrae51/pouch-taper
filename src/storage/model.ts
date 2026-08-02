@@ -1,4 +1,10 @@
-import type { DelayEvent, PlanDay, PouchLog, Settings } from "../engine/types";
+import type {
+  DelayEvent,
+  PlanDay,
+  PouchLog,
+  Settings,
+  WaterLog,
+} from "../engine/types";
 
 export type Slip = { id: string; timestamp: string };
 
@@ -20,5 +26,6 @@ export type AppState = {
   logs: PouchLog[];
   delays: DelayEvent[];
   slips: Slip[];
+  waterLogs: WaterLog[];
   meta: Meta;
 };

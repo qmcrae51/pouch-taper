@@ -52,6 +52,11 @@ function populatedState(): AppState {
     outcome: "used",
   });
   state.slips.push({ id: uid(), timestamp: "2026-09-12T15:00:00.000Z" });
+  state.waterLogs.push({
+    id: uid(),
+    timestamp: "2026-08-01T15:00:00.000Z",
+    dateKey: "2026-08-01",
+  });
   state.meta.backfilled["2026-08-02"] = 7;
   state.meta.backfillSkipped.push("2026-08-03");
   state.meta.plateauShownAt = "2026-08-31T12:00:00.000Z";

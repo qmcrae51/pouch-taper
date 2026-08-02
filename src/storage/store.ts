@@ -26,6 +26,7 @@ export function defaultState(): AppState {
     logs: [],
     delays: [],
     slips: [],
+    waterLogs: [],
     meta: { backfilled: {}, backfillSkipped: [] },
   };
 }
@@ -51,7 +52,11 @@ function withDefaults(parsed: AppState): AppState {
   return {
     ...base,
     ...parsed,
-    settings: { ...base.settings, ...parsed.settings },
+    settings: {
+      ...base.settings,
+      ...parsed.settings,
+      water: { ...base.settings.water, ...(parsed.settings.water ?? {}) },
+    },
     meta: { ...base.meta, ...(parsed.meta ?? {}) },
   };
 }

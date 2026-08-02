@@ -20,11 +20,13 @@ import PostQuit from "./ui/PostQuit";
 import Settings from "./ui/Settings";
 import Stats from "./ui/Stats";
 import Today from "./ui/Today";
+import Water from "./ui/Water";
 
-type Tab = "today" | "history" | "stats" | "settings";
+type Tab = "today" | "water" | "history" | "stats" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "today", label: "Today" },
+  { id: "water", label: "Water" },
   { id: "history", label: "History" },
   { id: "stats", label: "Stats" },
   { id: "settings", label: "Settings" },
@@ -123,6 +125,42 @@ export default function App() {
 
   const backfillDate = postQuit ? undefined : missingDays(state, todayKey)[0];
 
+  const waterToday = state.waterLogs.filter(
+    (l) => l.dateKey === todayKey,
+  ).length;
+
+  function addWater() {
+    const t = new Date();
+    setState((st) => ({
+      ...st,
+      waterLogs: [
+        ...st.waterLogs,
+        {
+          id: uid(),
+          timestamp: t.toISOString(),
+          dateKey: dateKeyFor(t, s.dayRolloverHour),
+        },
+      ],
+    }));
+  }
+
+  function undoWater() {
+    setState((st) => {
+      let idx = -1;
+      for (let i = st.waterLogs.length - 1; i >= 0; i--) {
+        if (st.waterLogs[i].dateKey === todayKey) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx === -1) return st;
+      return {
+        ...st,
+        waterLogs: st.waterLogs.filter((_, i) => i !== idx),
+      };
+    });
+  }
+
   function addLog(early: boolean) {
     const t = new Date();
     const log: PouchLog = {
@@ -209,6 +247,14 @@ export default function App() {
               onSnoozeUnder={snoozeUnder}
             />
           ))}
+        {tab === "water" && (
+          <Water
+            bottleOz={s.water.bottleOz}
+            goalLitres={s.water.goalLitres}
+            bottlesToday={waterToday}
+            onUndo={undoWater}
+          />
+        )}
         {tab === "history" && <History state={state} todayKey={todayKey} />}
         {tab === "stats" && <Stats state={state} todayKey={todayKey} />}
         {tab === "settings" && (
@@ -220,6 +266,14 @@ export default function App() {
         <div className="primary-area">
           <button className="log-btn" onClick={onLogTap}>
             Log a pouch
+          </button>
+        </div>
+      )}
+
+      {tab === "water" && (
+        <div className="primary-area">
+          <button className="log-btn water" onClick={addWater}>
+            Log a bottle
           </button>
         </div>
       )}

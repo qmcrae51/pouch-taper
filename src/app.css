@@ -307,6 +307,21 @@ body {
   transform: scale(0.985);
 }
 
+.log-btn.water {
+  background: linear-gradient(180deg, #5ec9f8, #2d9fd8);
+  color: #062334;
+  box-shadow: 0 4px 18px rgba(56, 189, 248, 0.25);
+}
+
+.pip.water {
+  background: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.undo-area {
+  text-align: center;
+}
+
 /* ---------- tab bar ---------- */
 
 .tabbar {
