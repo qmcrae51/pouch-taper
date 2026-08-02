@@ -25,6 +25,7 @@ type TodayProps = {
   lastLogId: string | null;
   onTagLast(patch: Partial<PouchLog>): void;
   onDismissTag(): void;
+  onUndo(): void;
   onFasterCurve(): void;
   onEarlierQuit(): void;
   onSnoozeUnder(): void;
@@ -150,6 +151,14 @@ export default function Today(p: TodayProps) {
       )}
 
       <Pips allowance={p.allowance} used={p.usedToday} />
+
+      {p.usedToday > 0 && (
+        <div className="undo-area">
+          <button className="linklike" onClick={p.onUndo}>
+            undo last pouch
+          </button>
+        </div>
+      )}
 
       {p.lastLogId && (
         <div className="card tag-card">

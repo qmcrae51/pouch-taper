@@ -144,6 +144,21 @@ export default function App() {
     }));
   }
 
+  function undoPouch() {
+    setState((st) => {
+      let idx = -1;
+      for (let i = st.logs.length - 1; i >= 0; i--) {
+        if (st.logs[i].dateKey === todayKey) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx === -1) return st;
+      if (st.logs[idx].id === lastLogId) setLastLogId(null);
+      return { ...st, logs: st.logs.filter((_, i) => i !== idx) };
+    });
+  }
+
   function undoWater() {
     setState((st) => {
       let idx = -1;
@@ -242,6 +257,7 @@ export default function App() {
               lastLogId={lastLogId}
               onTagLast={tagLast}
               onDismissTag={() => setLastLogId(null)}
+              onUndo={undoPouch}
               onFasterCurve={() => recompute()}
               onEarlierQuit={() => recompute(earlierQuit)}
               onSnoozeUnder={snoozeUnder}
