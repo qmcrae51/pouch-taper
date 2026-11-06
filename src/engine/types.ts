@@ -16,6 +16,17 @@ export type Settings = {
   /** Pinned slot times when the daily allowance is 1 or 2. */
   anchors: { one: string[]; two: string[] };
   water: { bottleOz: number; goalLitres: number };
+  /** Anchor points for the curve; absent means a single exponential. */
+  milestones?: Milestone[];
+};
+
+/** Reach `fraction` of baseline on taper day `dayIndex` (zero-indexed). */
+export type Milestone = { dayIndex: number; fraction: number };
+
+export type Phase = {
+  startDate: string;
+  quitDate: string;
+  baselinePerDay: number;
 };
 
 export type PlanDay = {

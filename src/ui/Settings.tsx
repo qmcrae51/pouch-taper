@@ -1,12 +1,15 @@
 import { useRef, useState } from "react";
-import { buildCurve } from "../engine/curve";
+import { buildPlanFor } from "../engine/curve";
 import { addDays, daysBetween } from "../engine/dates";
+import { NEW_PHASE_DEFAULTS } from "../engine/defaults";
 import { supplyPlan } from "../engine/supply";
 import type { Settings as SettingsType } from "../engine/types";
 import {
   adjustedPlanFor,
   applyRecompute,
   previewRecompute,
+  startNewPhase,
+  type NewPhase,
   type RecomputePreview,
 } from "../storage/derive";
 import type { AppState } from "../storage/model";
@@ -26,15 +29,45 @@ function parseAnchors(text: string): string[] {
     .filter((t) => /^\d{1,2}:\d{2}$/.test(t));
 }
 
-export default function Settings({ state, setState, todayKey }: Props) {
-  const s = state.settings;
-  const [draft, setDraft] = useState<SettingsType>(() => ({
+function cloneSettings(s: SettingsType): SettingsType {
+  return {
     ...s,
     travelMode: { ...s.travelMode },
     anchors: { one: [...s.anchors.one], two: [...s.anchors.two] },
     water: { ...s.water },
-  }));
+    milestones: s.milestones?.map((m) => ({ ...m })),
+  };
+}
+
+/** The new plan described by the "Start a new plan" form. */
+function newPhaseFrom(
+  startDate: string,
+  baseline: number,
+  weeks: number,
+  halveByWeek: number,
+): NewPhase {
+  return {
+    startDate,
+    quitDate: addDays(startDate, Math.round(weeks * 7)),
+    baselinePerDay: baseline,
+    milestones:
+      halveByWeek > 0 ? [{ dayIndex: halveByWeek * 7 - 1, fraction: 0.5 }] : [],
+  };
+}
+
+export default function Settings({ state, setState, todayKey }: Props) {
+  const s = state.settings;
+  const [draft, setDraft] = useState<SettingsType>(() => cloneSettings(s));
   const [msg, setMsg] = useState<string | null>(null);
+  const [phaseStart, setPhaseStart] = useState(todayKey);
+  const [phaseBaseline, setPhaseBaseline] = useState(
+    NEW_PHASE_DEFAULTS.baselinePerDay,
+  );
+  const [phaseWeeks, setPhaseWeeks] = useState(NEW_PHASE_DEFAULTS.weeks);
+  const [phaseHalveBy, setPhaseHalveBy] = useState(
+    (NEW_PHASE_DEFAULTS.milestones[0].dayIndex + 1) / 7,
+  );
+  const [confirmPhase, setConfirmPhase] = useState(false);
   const [preview, setPreview] = useState<RecomputePreview | null>(null);
   const [previewQuit, setPreviewQuit] = useState<string>(s.quitDate);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -59,10 +92,39 @@ export default function Settings({ state, setState, todayKey }: Props) {
       ...st,
       settings: draft,
       plan: curveChanged
-        ? buildCurve(draft.baselinePerDay, draft.startDate, draft.quitDate)
+        ? [
+            ...st.plan.filter((d) => d.date < draft.startDate),
+            ...buildPlanFor(draft),
+          ]
         : st.plan,
     }));
     setMsg(curveChanged ? "Saved — the curve was rebuilt." : "Saved.");
+  }
+
+  const phase = newPhaseFrom(phaseStart, phaseBaseline, phaseWeeks, phaseHalveBy);
+  let phasePreview: string | null = null;
+  try {
+    const p = buildPlanFor({ ...phase, milestones: phase.milestones });
+    const total = p.reduce((sum, d) => sum + d.plannedAllowance, 0);
+    const halfway = phase.milestones[0]
+      ? p[phase.milestones[0].dayIndex]
+      : undefined;
+    const lastDay = p[p.length - 2];
+    phasePreview =
+      `${p[0].plannedAllowance}/day` +
+      (halfway ? ` → ${halfway.plannedAllowance} by ${fmtDateShort(halfway.date)}` : "") +
+      ` → ${lastDay.plannedAllowance} on ${fmtDateShort(lastDay.date)}` +
+      ` → 0 from ${fmtDateShort(phase.quitDate)}. ${total} pouches in all.`;
+  } catch {
+    phasePreview = null;
+  }
+
+  function applyNewPhase() {
+    const next = startNewPhase(state, phase);
+    setState(next);
+    setDraft(cloneSettings(next.settings));
+    setConfirmPhase(false);
+    setMsg(`New plan started. Zero day is ${fmtDateShort(phase.quitDate)}.`);
   }
 
   function startRecompute(quitDate = s.quitDate) {
@@ -97,15 +159,7 @@ export default function Settings({ state, setState, todayKey }: Props) {
       .then((text) => {
         const imported = importJSON(text);
         setState(imported);
-        setDraft({
-          ...imported.settings,
-          travelMode: { ...imported.settings.travelMode },
-          anchors: {
-            one: [...imported.settings.anchors.one],
-            two: [...imported.settings.anchors.two],
-          },
-          water: { ...imported.settings.water },
-        });
+        setDraft(cloneSettings(imported.settings));
         setMsg("Backup restored.");
       })
       .catch((e: Error) => setMsg(e.message));
@@ -115,15 +169,7 @@ export default function Settings({ state, setState, todayKey }: Props) {
     clearState(localStorage);
     const fresh = defaultState();
     setState(fresh);
-    setDraft({
-      ...fresh.settings,
-      travelMode: { ...fresh.settings.travelMode },
-      anchors: {
-        one: [...fresh.settings.anchors.one],
-        two: [...fresh.settings.anchors.two],
-      },
-      water: { ...fresh.settings.water },
-    });
+    setDraft(cloneSettings(fresh.settings));
     setConfirmReset(false);
     setMsg("All data erased.");
   }
@@ -191,6 +237,76 @@ export default function Settings({ state, setState, todayKey }: Props) {
             onChange={(e) => set("currency", e.target.value.toUpperCase())}
           />
         </label>
+      </div>
+
+      <div className="card">
+        <h3>Start a new plan</h3>
+        <p className="muted small">
+          Begins a fresh taper. Your current plan and all history are kept.
+        </p>
+        <label>
+          Start date
+          <input
+            type="date"
+            value={phaseStart}
+            onChange={(e) => setPhaseStart(e.target.value || todayKey)}
+          />
+        </label>
+        <label>
+          Pouches/day now
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={phaseBaseline}
+            onChange={(e) =>
+              setPhaseBaseline(Math.max(1, num(e.target.value, phaseBaseline)))
+            }
+          />
+        </label>
+        <label>
+          Weeks until zero
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={phaseWeeks}
+            onChange={(e) =>
+              setPhaseWeeks(Math.max(1, num(e.target.value, phaseWeeks)))
+            }
+          />
+        </label>
+        <label>
+          Halve by end of week (0 = off)
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={phaseHalveBy}
+            onChange={(e) =>
+              setPhaseHalveBy(Math.max(0, num(e.target.value, phaseHalveBy)))
+            }
+          />
+        </label>
+        {phasePreview && <p className="small">{phasePreview}</p>}
+        {!confirmPhase ? (
+          <button
+            className="btn"
+            disabled={!phasePreview}
+            onClick={() => setConfirmPhase(true)}
+          >
+            Start new plan
+          </button>
+        ) : (
+          <div className="row">
+            <button className="btn good" onClick={applyNewPhase}>
+              Yes, start it
+            </button>
+            <button className="btn plain" onClick={() => setConfirmPhase(false)}>
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="card">

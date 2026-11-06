@@ -1,4 +1,15 @@
-import type { Settings } from "./types";
+import type { Milestone, Settings } from "./types";
+
+/** Prefill for "Start a new plan": 8/day, halved by end of week 4, zero after week 8. */
+export const NEW_PHASE_DEFAULTS: {
+  baselinePerDay: number;
+  weeks: number;
+  milestones: Milestone[];
+} = {
+  baselinePerDay: 8,
+  weeks: 8,
+  milestones: [{ dayIndex: 27, fraction: 0.5 }],
+};
 
 export const DEFAULT_SETTINGS: Settings = {
   productName: "Zonnic 4mg",

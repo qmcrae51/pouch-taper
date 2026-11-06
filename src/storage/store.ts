@@ -1,4 +1,4 @@
-import { buildCurve } from "../engine/curve";
+import { buildPlanFor } from "../engine/curve";
 import { DEFAULT_SETTINGS } from "../engine/defaults";
 import type { AppState } from "./model";
 
@@ -22,12 +22,12 @@ export function defaultState(): AppState {
   return {
     version: 1,
     settings,
-    plan: buildCurve(settings.baselinePerDay, settings.startDate, settings.quitDate),
+    plan: buildPlanFor(settings),
     logs: [],
     delays: [],
     slips: [],
     waterLogs: [],
-    meta: { backfilled: {}, backfillSkipped: [] },
+    meta: { backfilled: {}, backfillSkipped: [], pastPhases: [] },
   };
 }
 

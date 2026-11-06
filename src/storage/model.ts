@@ -1,5 +1,6 @@
 import type {
   DelayEvent,
+  Phase,
   PlanDay,
   PouchLog,
   Settings,
@@ -17,6 +18,8 @@ export type Meta = {
   plateauShownAt?: string;
   /** Date until which the under-target recompute prompt is snoozed. */
   underPromptSnoozedUntil?: string;
+  /** Earlier tapers, oldest first. The current one lives in settings. */
+  pastPhases: Phase[];
 };
 
 export type AppState = {

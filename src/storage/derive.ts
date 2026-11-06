@@ -1,7 +1,8 @@
 import { computeAdjustedPlan } from "../engine/adjust";
+import { buildPlanFor } from "../engine/curve";
 import { addDays, dateKeyFor, daysBetween } from "../engine/dates";
 import { recomputePlan, trailingAverage } from "../engine/recompute";
-import type { PlanDay, PouchLog, UsedByDate } from "../engine/types";
+import type { Milestone, PlanDay, PouchLog, UsedByDate } from "../engine/types";
 import type { AppState } from "./model";
 
 export function usedByDateFrom(
@@ -78,12 +79,14 @@ export function statsFor(state: AppState, todayKey: string): Stats {
     slipByDay[key] = (slipByDay[key] ?? 0) + 1;
   }
 
-  // Days with known usage count toward savings; unknown days count as nothing
-  // rather than assuming zero use.
+  // Days with known usage count toward savings, each against its own plan's
+  // baseline; unknown days, and days between plans, count as nothing rather
+  // than assuming zero use.
   let avoided = 0;
   for (const [date, u] of Object.entries(used)) {
-    if (date > todayKey || date >= s.quitDate) continue;
-    avoided += s.baselinePerDay - u;
+    if (date > todayKey) continue;
+    const baseline = taperBaselineFor(state, date);
+    if (baseline !== undefined) avoided += baseline - u;
   }
   if (todayKey >= s.quitDate) {
     for (let key = s.quitDate; key <= todayKey; key = addDays(key, 1)) {
@@ -120,15 +123,78 @@ export type PostQuitSummary = {
 export function postQuitSummary(state: AppState, todayKey: string): PostQuitSummary {
   const s = state.settings;
   const daysSinceQuit = daysBetween(s.quitDate, todayKey) + 1;
-  const slipDays = new Set(
-    state.slips.map((slip) =>
-      dateKeyFor(new Date(slip.timestamp), s.dayRolloverHour),
-    ),
-  ).size;
+  // Slips from an earlier plan's post-quit stretch don't belong to this one.
+  const slipKeys = state.slips
+    .map((slip) => dateKeyFor(new Date(slip.timestamp), s.dayRolloverHour))
+    .filter((key) => key >= s.quitDate && key <= todayKey);
   return {
     daysSinceQuit,
-    daysClean: daysSinceQuit - slipDays,
-    totalSlips: state.slips.length,
+    daysClean: daysSinceQuit - new Set(slipKeys).size,
+    totalSlips: slipKeys.length,
+  };
+}
+
+/** Baseline of the taper (current or past) whose taper window holds `date`. */
+export function taperBaselineFor(
+  state: AppState,
+  date: string,
+): number | undefined {
+  const phases = [...state.meta.pastPhases, state.settings];
+  const phase = phases.find((p) => date >= p.startDate && date < p.quitDate);
+  return phase?.baselinePerDay;
+}
+
+/** First date of the current plan with an allowance of 2 or less. */
+export function zeroCountdownFrom(state: AppState): string | undefined {
+  return state.plan.find(
+    (d) =>
+      d.date >= state.settings.startDate &&
+      d.plannedAllowance > 0 &&
+      d.plannedAllowance <= 2,
+  )?.date;
+}
+
+export type NewPhase = {
+  startDate: string;
+  quitDate: string;
+  baselinePerDay: number;
+  milestones: Milestone[];
+};
+
+/**
+ * Begin a new taper. The current plan is archived to pastPhases, its plan
+ * days and all logs are kept as history, and a fresh curve starts on
+ * `startDate`.
+ */
+export function startNewPhase(state: AppState, next: NewPhase): AppState {
+  const s = state.settings;
+  const settings = {
+    ...s,
+    startDate: next.startDate,
+    quitDate: next.quitDate,
+    baselinePerDay: next.baselinePerDay,
+    milestones: next.milestones,
+  };
+  return {
+    ...state,
+    settings,
+    plan: [
+      ...state.plan.filter((d) => d.date < next.startDate),
+      ...buildPlanFor(settings),
+    ],
+    meta: {
+      ...state.meta,
+      pastPhases: [
+        ...state.meta.pastPhases,
+        {
+          startDate: s.startDate,
+          quitDate: s.quitDate,
+          baselinePerDay: s.baselinePerDay,
+        },
+      ],
+      plateauShownAt: undefined,
+      underPromptSnoozedUntil: undefined,
+    },
   };
 }
 
@@ -181,10 +247,13 @@ export function applyRecompute(
   const from = recomputeFrom(state, todayKey);
   const { plan: newDays } = recomputePlan(preview.newBaseline, from, quitDate);
   const history = state.plan.filter((d) => d.date < from);
-  const plan = [...history, ...newDays].map((d) => ({
-    ...d,
-    dayIndex: daysBetween(state.settings.startDate, d.date),
-  }));
+  const plan = [
+    ...history,
+    ...newDays.map((d) => ({
+      ...d,
+      dayIndex: daysBetween(state.settings.startDate, d.date),
+    })),
+  ];
   return {
     ...state,
     settings: { ...state.settings, quitDate },

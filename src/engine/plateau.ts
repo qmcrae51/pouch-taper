@@ -3,8 +3,6 @@ import type { PlanDay, UsedByDate } from "./types";
 
 const PLATEAU_STREAK_DAYS = 5;
 const PLATEAU_ALLOWANCE_MAX = 2;
-/** From this day index onward the home screen shows the days-to-zero countdown. */
-export const COUNTDOWN_FROM_DAY = 25;
 
 /**
  * The plateau banner fires after 5 consecutive completed days at or above

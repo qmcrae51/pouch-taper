@@ -18,7 +18,10 @@ export default function History({
   state: AppState;
   todayKey: string;
 }) {
-  const plan = adjustedPlanFor(state);
+  // Only the current plan; earlier ones stay in the data and in exports.
+  const plan = adjustedPlanFor(state).filter(
+    (d) => d.date >= state.settings.startDate,
+  );
   const used = usedByDateFrom(state.logs, state.meta.backfilled);
   const streak = streakAtOrUnder(state, todayKey);
   const [sel, setSel] = useState<string | null>(null);

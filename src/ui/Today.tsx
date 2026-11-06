@@ -2,7 +2,6 @@ import type { PouchLog } from "../engine/types";
 import { fmtClock, fmtCountdown, fmtDateFull, fmtDateShort } from "./format";
 
 const TRIGGERS = ["coffee", "driving", "stress", "boredom", "after meal"];
-const COUNTDOWN_FROM_DAY = 25;
 
 type TodayProps = {
   todayKey: string;
@@ -18,6 +17,7 @@ type TodayProps = {
   dayIndex: number;
   taperDays: number;
   daysToZero: number;
+  showZeroCountdown: boolean;
   overBy: number;
   plateauVisible: boolean;
   underDue: boolean;
@@ -73,7 +73,7 @@ export default function Today(p: TodayProps) {
         </div>
       </header>
 
-      {p.dayIndex >= COUNTDOWN_FROM_DAY && (
+      {p.showZeroCountdown && (
         <div className="zero-countdown">
           {p.daysToZero} {p.daysToZero === 1 ? "day" : "days"} to zero —{" "}
           {fmtDateShort(p.quitDate)}

@@ -10,6 +10,7 @@ import {
   missingDays,
   previewRecompute,
   usedByDateFrom,
+  zeroCountdownFrom,
 } from "./storage/derive";
 import type { AppState } from "./storage/model";
 import { loadState, saveState, uid } from "./storage/store";
@@ -91,6 +92,8 @@ export default function App() {
   const dayIndex = daysBetween(s.startDate, todayKey);
   const taperDays = daysBetween(s.startDate, s.quitDate);
   const daysToZero = Math.max(0, daysBetween(todayKey, s.quitDate));
+  const countdownFrom = zeroCountdownFrom(state);
+  const showZeroCountdown = !!countdownFrom && todayKey >= countdownFrom;
   const overBy = Math.max(0, usedToday - allowance);
 
   const snoozed =
@@ -250,6 +253,7 @@ export default function App() {
               dayIndex={dayIndex}
               taperDays={taperDays}
               daysToZero={daysToZero}
+              showZeroCountdown={showZeroCountdown}
               overBy={overBy}
               plateauVisible={plateauVisible}
               underDue={underDue}

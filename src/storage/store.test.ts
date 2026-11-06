@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   applyRecompute,
   missingDays,
+  postQuitSummary,
   previewRecompute,
+  startNewPhase,
+  statsFor,
   streakAtOrUnder,
+  taperBaselineFor,
   usedByDateFrom,
+  zeroCountdownFrom,
 } from "./derive";
 import type { AppState } from "./model";
 import {
@@ -162,5 +167,96 @@ describe("recompute action", () => {
   it("returns null when there is no runway left", () => {
     const state = defaultState();
     expect(applyRecompute(state, "2026-09-11")).toBeNull();
+  });
+});
+
+describe("starting a new plan", () => {
+  const NEW_PHASE = {
+    startDate: "2026-11-06",
+    quitDate: "2027-01-01",
+    baselinePerDay: 8,
+    milestones: [{ dayIndex: 27, fraction: 0.5 }],
+  };
+
+  // Like the phone today: a finished Aug-Sep taper, then post-quit slips.
+  function afterFirstTaper(): AppState {
+    const state = defaultState();
+    state.meta.backfilled = { "2026-08-01": 10, "2026-08-02": 9 };
+    state.slips.push(
+      { id: uid(), timestamp: "2026-09-20T15:00:00.000Z" },
+      { id: uid(), timestamp: "2026-10-15T15:00:00.000Z" },
+    );
+    return state;
+  }
+
+  it("archives the old plan and keeps its plan days", () => {
+    const next = startNewPhase(afterFirstTaper(), NEW_PHASE);
+    expect(next.meta.pastPhases).toEqual([
+      { startDate: "2026-08-01", quitDate: "2026-09-11", baselinePerDay: 10 },
+    ]);
+    expect(next.plan.find((d) => d.date === "2026-08-01")!.plannedAllowance).toBe(10);
+    expect(next.plan.find((d) => d.date === "2026-09-11")!.plannedAllowance).toBe(0);
+    expect(next.plan.find((d) => d.date === "2026-11-06")!.plannedAllowance).toBe(8);
+    expect(next.plan.find((d) => d.date === "2026-12-03")!.plannedAllowance).toBe(4);
+    expect(next.plan.at(-1)).toMatchObject({ date: "2027-01-01", plannedAllowance: 0 });
+    expect(next.plan.some((d) => d.date === "2026-10-01")).toBe(false);
+    expect(next.settings).toMatchObject(NEW_PHASE);
+  });
+
+  it("keeps all logs and slips", () => {
+    const before = afterFirstTaper();
+    const next = startNewPhase(before, NEW_PHASE);
+    expect(next.slips).toEqual(before.slips);
+    expect(next.logs).toEqual(before.logs);
+    expect(next.meta.backfilled).toEqual(before.meta.backfilled);
+  });
+
+  it("does not ask to backfill the gap between plans", () => {
+    const next = startNewPhase(afterFirstTaper(), NEW_PHASE);
+    expect(missingDays(next, "2026-11-06")).toEqual([]);
+  });
+
+  it("uses each plan's own baseline for savings and skips the gap", () => {
+    const next = startNewPhase(afterFirstTaper(), NEW_PHASE);
+    expect(taperBaselineFor(next, "2026-08-01")).toBe(10);
+    expect(taperBaselineFor(next, "2026-10-01")).toBeUndefined();
+    expect(taperBaselineFor(next, "2026-11-06")).toBe(8);
+    next.meta.backfilled["2026-11-06"] = 6;
+    // Aug 1: 10-10=0, Aug 2: 10-9=1, Nov 6: 8-6=2. Nothing for Sep 11 - Nov 5.
+    expect(statsFor(next, "2026-11-07").avoided).toBe(3);
+  });
+
+  it("ignores slips from before the current quit date", () => {
+    const next = startNewPhase(afterFirstTaper(), NEW_PHASE);
+    next.slips.push({ id: uid(), timestamp: "2027-01-05T15:00:00.000Z" });
+    const sum = postQuitSummary(next, "2027-01-10");
+    expect(sum.daysSinceQuit).toBe(10);
+    expect(sum.totalSlips).toBe(1);
+    expect(sum.daysClean).toBe(9);
+  });
+
+  it("starts the days-to-zero countdown when the new plan first reaches 2", () => {
+    const next = startNewPhase(afterFirstTaper(), NEW_PHASE);
+    expect(zeroCountdownFrom(next)).toBe("2026-12-13");
+    // Same rule gives the original plan's day 25 (Aug 26).
+    expect(zeroCountdownFrom(defaultState())).toBe("2026-08-26");
+  });
+
+  it("round-trips through export and import", () => {
+    const next = startNewPhase(afterFirstTaper(), NEW_PHASE);
+    expect(importJSON(exportJSON(next))).toEqual(next);
+  });
+
+  it("loads saved data from before plans had phases or milestones", () => {
+    const old = defaultState() as unknown as {
+      meta: Record<string, unknown>;
+      settings: Record<string, unknown>;
+    };
+    delete old.meta.pastPhases;
+    delete old.settings.milestones;
+    const loaded = importJSON(JSON.stringify(old));
+    expect(loaded.meta.pastPhases).toEqual([]);
+    expect(loaded.settings.milestones).toBeUndefined();
+    expect(postQuitSummary(loaded, "2026-09-12").daysClean).toBe(2);
   });
 });
