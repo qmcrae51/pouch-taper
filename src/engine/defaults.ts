@@ -28,4 +28,15 @@ export const DEFAULT_SETTINGS: Settings = {
   travelMode: { active: false, from: "2026-08-26", to: "2026-09-06" },
   anchors: { one: ["09:00"], two: ["09:00", "17:00"] },
   water: { bottleOz: 24, goalLitres: 4 },
+  medication: {
+    enabled: true,
+    name: "Varenicline",
+    startDate: "2026-11-06",
+    totalDays: 84,
+    steps: [
+      { fromDay: 1, mg: 0.5, timesPerDay: 1 },
+      { fromDay: 4, mg: 0.5, timesPerDay: 2 },
+      { fromDay: 8, mg: 1, timesPerDay: 2 },
+    ],
+  },
 };

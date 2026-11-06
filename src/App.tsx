@@ -14,8 +14,10 @@ import {
 } from "./storage/derive";
 import type { AppState } from "./storage/model";
 import { loadState, saveState, uid } from "./storage/store";
+import { doseForDay } from "./engine/medication";
 import Backfill from "./ui/Backfill";
 import Delay from "./ui/Delay";
+import DoseCard from "./ui/DoseCard";
 import History from "./ui/History";
 import PostQuit from "./ui/PostQuit";
 import Settings from "./ui/Settings";
@@ -132,6 +134,38 @@ export default function App() {
     (l) => l.dateKey === todayKey,
   ).length;
 
+  const doseToday = doseForDay(s.medication, todayKey);
+  const takenSlots = new Set(
+    state.doseLogs.filter((l) => l.dateKey === todayKey).map((l) => l.slot),
+  );
+
+  function toggleDose(slot: number) {
+    setState((st) => {
+      const existing = st.doseLogs.find(
+        (l) => l.dateKey === todayKey && l.slot === slot,
+      );
+      if (existing) {
+        return { ...st, doseLogs: st.doseLogs.filter((l) => l !== existing) };
+      }
+      return {
+        ...st,
+        doseLogs: [
+          ...st.doseLogs,
+          { id: uid(), timestamp: new Date().toISOString(), dateKey: todayKey, slot },
+        ],
+      };
+    });
+  }
+
+  const doseCard = doseToday && (
+    <DoseCard
+      name={s.medication.name}
+      dose={doseToday}
+      takenSlots={takenSlots}
+      onToggle={toggleDose}
+    />
+  );
+
   function addWater() {
     const t = new Date();
     setState((st) => ({
@@ -237,7 +271,12 @@ export default function App() {
       <main className="content">
         {tab === "today" &&
           (postQuit ? (
-            <PostQuit state={state} setState={setState} todayKey={todayKey} />
+            <PostQuit
+              state={state}
+              setState={setState}
+              todayKey={todayKey}
+              doseCard={doseCard}
+            />
           ) : (
             <Today
               todayKey={todayKey}
@@ -262,6 +301,7 @@ export default function App() {
               onTagLast={tagLast}
               onDismissTag={() => setLastLogId(null)}
               onUndo={undoPouch}
+              doseCard={doseCard}
               onFasterCurve={() => recompute()}
               onEarlierQuit={() => recompute(earlierQuit)}
               onSnoozeUnder={snoozeUnder}

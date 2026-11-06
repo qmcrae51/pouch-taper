@@ -62,6 +62,12 @@ function populatedState(): AppState {
     timestamp: "2026-08-01T15:00:00.000Z",
     dateKey: "2026-08-01",
   });
+  state.doseLogs.push({
+    id: uid(),
+    timestamp: "2026-11-06T13:00:00.000Z",
+    dateKey: "2026-11-06",
+    slot: 0,
+  });
   state.meta.backfilled["2026-08-02"] = 7;
   state.meta.backfillSkipped.push("2026-08-03");
   state.meta.plateauShownAt = "2026-08-31T12:00:00.000Z";
@@ -258,5 +264,30 @@ describe("starting a new plan", () => {
     expect(loaded.meta.pastPhases).toEqual([]);
     expect(loaded.settings.milestones).toBeUndefined();
     expect(postQuitSummary(loaded, "2026-09-12").daysClean).toBe(2);
+  });
+});
+
+describe("medication data", () => {
+  it("loads saved data from before the dose card existed", () => {
+    const old = defaultState() as unknown as Record<string, unknown> & {
+      settings: Record<string, unknown>;
+    };
+    delete old.doseLogs;
+    delete old.settings.medication;
+    const loaded = importJSON(JSON.stringify(old));
+    expect(loaded.doseLogs).toEqual([]);
+    expect(loaded.settings.medication).toEqual(defaultState().settings.medication);
+  });
+
+  it("keeps a saved medication schedule over the defaults", () => {
+    const state = defaultState();
+    state.settings.medication = {
+      ...state.settings.medication,
+      name: "Something else",
+      totalDays: 168,
+    };
+    const loaded = importJSON(exportJSON(state));
+    expect(loaded.settings.medication.name).toBe("Something else");
+    expect(loaded.settings.medication.totalDays).toBe(168);
   });
 });

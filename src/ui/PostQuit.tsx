@@ -8,10 +8,12 @@ export default function PostQuit({
   state,
   setState,
   todayKey,
+  doseCard,
 }: {
   state: AppState;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
   todayKey: string;
+  doseCard?: React.ReactNode;
 }) {
   const sum = postQuitSummary(state, todayKey);
   const stats = statsFor(state, todayKey);
@@ -34,6 +36,8 @@ export default function PostQuit({
         </div>
         <div className="muted">You're on the other side.</div>
       </header>
+
+      {doseCard}
 
       <div className="big-remaining">
         <div className="big-num">{sum.daysClean}</div>

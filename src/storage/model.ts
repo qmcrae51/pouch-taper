@@ -1,5 +1,6 @@
 import type {
   DelayEvent,
+  DoseLog,
   Phase,
   PlanDay,
   PouchLog,
@@ -30,5 +31,6 @@ export type AppState = {
   delays: DelayEvent[];
   slips: Slip[];
   waterLogs: WaterLog[];
+  doseLogs: DoseLog[];
   meta: Meta;
 };

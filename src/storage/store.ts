@@ -27,6 +27,7 @@ export function defaultState(): AppState {
     delays: [],
     slips: [],
     waterLogs: [],
+    doseLogs: [],
     meta: { backfilled: {}, backfillSkipped: [], pastPhases: [] },
   };
 }
@@ -56,6 +57,10 @@ function withDefaults(parsed: AppState): AppState {
       ...base.settings,
       ...parsed.settings,
       water: { ...base.settings.water, ...(parsed.settings.water ?? {}) },
+      medication: {
+        ...base.settings.medication,
+        ...(parsed.settings.medication ?? {}),
+      },
     },
     meta: { ...base.meta, ...(parsed.meta ?? {}) },
   };

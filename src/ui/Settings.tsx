@@ -36,6 +36,10 @@ function cloneSettings(s: SettingsType): SettingsType {
     anchors: { one: [...s.anchors.one], two: [...s.anchors.two] },
     water: { ...s.water },
     milestones: s.milestones?.map((m) => ({ ...m })),
+    medication: {
+      ...s.medication,
+      steps: s.medication.steps.map((step) => ({ ...step })),
+    },
   };
 }
 
@@ -77,6 +81,25 @@ export default function Settings({ state, setState, todayKey }: Props) {
 
   function set<K extends keyof SettingsType>(key: K, value: SettingsType[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
+  }
+
+  function setMed(patch: Partial<SettingsType["medication"]>) {
+    setDraft((d) => ({ ...d, medication: { ...d.medication, ...patch } }));
+  }
+
+  function setStep(
+    i: number,
+    patch: Partial<SettingsType["medication"]["steps"][number]>,
+  ) {
+    setDraft((d) => ({
+      ...d,
+      medication: {
+        ...d.medication,
+        steps: d.medication.steps.map((step, j) =>
+          j === i ? { ...step, ...patch } : step,
+        ),
+      },
+    }));
   }
 
   function save() {
@@ -464,6 +487,94 @@ export default function Settings({ state, setState, todayKey }: Props) {
         </label>
         <p className="muted small">
           Same goal every day — no end date, no taper.
+        </p>
+      </div>
+
+      <div className="card">
+        <h3>Medication</h3>
+        <label className="toggle-row">
+          Show on Today
+          <input
+            type="checkbox"
+            checked={draft.medication.enabled}
+            onChange={(e) => setMed({ enabled: e.target.checked })}
+          />
+        </label>
+        <label>
+          Name
+          <input
+            value={draft.medication.name}
+            onChange={(e) => setMed({ name: e.target.value })}
+          />
+        </label>
+        <label>
+          Day 1
+          <input
+            type="date"
+            value={draft.medication.startDate}
+            onChange={(e) =>
+              setMed({ startDate: e.target.value || draft.medication.startDate })
+            }
+          />
+        </label>
+        <label>
+          Course length (days)
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={draft.medication.totalDays}
+            onChange={(e) =>
+              setMed({
+                totalDays: Math.max(1, num(e.target.value, draft.medication.totalDays)),
+              })
+            }
+          />
+        </label>
+        {draft.medication.steps.map((step, i) => (
+          <div key={i} className="dose-step">
+            <div className="muted small">Step {i + 1}</div>
+            <label>
+              From day
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={step.fromDay}
+                onChange={(e) =>
+                  setStep(i, { fromDay: Math.max(1, num(e.target.value, step.fromDay)) })
+                }
+              />
+            </label>
+            <label>
+              mg per dose
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.5"
+                value={step.mg}
+                onChange={(e) => setStep(i, { mg: num(e.target.value, step.mg) })}
+              />
+            </label>
+            <label>
+              Times a day
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={step.timesPerDay}
+                onChange={(e) =>
+                  setStep(i, {
+                    timesPerDay: Math.max(1, num(e.target.value, step.timesPerDay)),
+                  })
+                }
+              />
+            </label>
+          </div>
+        ))}
+        <p className="muted small">
+          Shows today's dose from your schedule. Ends after day{" "}
+          {draft.medication.totalDays}.
         </p>
       </div>
 

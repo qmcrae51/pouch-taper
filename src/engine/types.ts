@@ -1,3 +1,5 @@
+import type { Medication } from "./medication";
+
 export type Settings = {
   productName: string;
   mgPerPouch: number;
@@ -18,6 +20,15 @@ export type Settings = {
   water: { bottleOz: number; goalLitres: number };
   /** Anchor points for the curve; absent means a single exponential. */
   milestones?: Milestone[];
+  medication: Medication;
+};
+
+export type DoseLog = {
+  id: string;
+  timestamp: string; // ISO datetime
+  dateKey: string; // resolved with rollover hour
+  /** Which of the day's doses: 0 = first. */
+  slot: number;
 };
 
 /** Reach `fraction` of baseline on taper day `dayIndex` (zero-indexed). */

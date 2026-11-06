@@ -29,6 +29,7 @@ type TodayProps = {
   onFasterCurve(): void;
   onEarlierQuit(): void;
   onSnoozeUnder(): void;
+  doseCard?: React.ReactNode;
 };
 
 function Pips({ allowance, used }: { allowance: number; used: number }) {
@@ -56,6 +57,7 @@ export default function Today(p: TodayProps) {
           Your taper starts on {fmtDateFull(p.startDate)}. Zero day is{" "}
           {fmtDateShort(p.quitDate)}.
         </p>
+        {p.doseCard}
       </div>
     );
   }
@@ -72,6 +74,8 @@ export default function Today(p: TodayProps) {
           {fmtDateShort(p.quitDate)}
         </div>
       </header>
+
+      {p.doseCard}
 
       {p.showZeroCountdown && (
         <div className="zero-countdown">
